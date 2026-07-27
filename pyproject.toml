@@ -54,7 +54,7 @@ Repository = "https://github.com/ayhammouda/obd-mcp-server"
 [dependency-groups]
 dev = [
   "build>=1.3,<2",
-  "mypy>=1.18,<2",
+  "mypy>=1.18,<3",
   "pip-audit>=2.9,<3",
   "pip-licenses>=5.5,<6",
   "pytest>=9.0.3,<10",
