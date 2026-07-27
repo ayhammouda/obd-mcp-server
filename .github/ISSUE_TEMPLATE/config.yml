@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security or vehicle-safety report
+    url: https://github.com/ayhammouda/obd-mcp-server/security/advisories/new
+    about: Do not disclose unsafe commands, exploits, VINs, or captures publicly.
+

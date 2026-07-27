@@ -1,0 +1,40 @@
+schema_version = 1
+profile_id = "example.synthetic.powertrain"
+name = "Synthetic powertrain example"
+version = "1.0.0"
+
+[provenance]
+source = "synthetic"
+origin = "Generated solely for the OBD MCP Server example"
+license = "CC0-1.0"
+redistribution_allowed = true
+confidence = 1.0
+notes = "Does not describe any real vehicle or ECU."
+
+[selector]
+protocol = "uds"
+ecu_ids = ["engine"]
+
+[[reads]]
+name = "Synthetic counter"
+ecu_id = "engine"
+service = "0x22"
+identifier = "0xF40D"
+signal_id = "synthetic_counter"
+description = "Deterministic demonstration value."
+
+[reads.decoder]
+data_type = "uint16"
+byte_offset = 0
+byte_length = 2
+byte_order = "big"
+scale = 1.0
+value_offset = 0.0
+unit = "count"
+
+[[reads]]
+name = "Synthetic stored trouble codes"
+ecu_id = "engine"
+service = "0x19"
+identifier = "0x02"
+description = "Demonstrates the read-DTC profile shape."

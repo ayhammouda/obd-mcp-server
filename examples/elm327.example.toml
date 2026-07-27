@@ -1,0 +1,26 @@
+# Opt-in live hardware example. Replace the port with one explicitly selected
+# for your adapter. The server never scans serial ports automatically.
+
+[server]
+host = "127.0.0.1"
+port = 8765
+http_path = "/mcp"
+log_level = "INFO"
+
+[storage]
+path = ".state/elm327-issues.sqlite3"
+
+[privacy]
+allow_full_vin = false
+vin_suffix_length = 4
+
+[[vehicles]]
+id = "garage-car"
+name = "Stationary test vehicle"
+driver = "elm327"
+
+[vehicles.options]
+port = "/dev/ttyUSB0"
+baudrate = 38400
+timeout_seconds = 5.0
+protocol = "iso_15765_4_can"

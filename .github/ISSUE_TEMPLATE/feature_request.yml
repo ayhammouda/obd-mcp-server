@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a read-only, OEM-neutral improvement.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem should be solved?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed read-only behavior
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety and trust-boundary impact
+      description: Explain why no vehicle mutation or raw command is needed.
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Data provenance and license
+      description: Required for any new profile/definition source.
+    validations:
+      required: false
+

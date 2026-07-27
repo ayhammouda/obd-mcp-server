@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a reproducible defect without sensitive vehicle data.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include VINs, raw captures, credentials, private profiles, or
+        unsafe commands. Security/safety-boundary issues belong in the private
+        vulnerability flow described in SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+    validations:
+      required: true
+  - type: dropdown
+    id: driver
+    attributes:
+      label: Driver
+      options:
+        - simulator
+        - elm327
+        - third-party plugin
+        - not driver-related
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Sanitized reproduction
+      description: Prefer the simulator or mocks.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python, transport, adapter model if relevant.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Data check
+      options:
+        - label: I removed VINs, captures, credentials, and private/OEM data.
+          required: true
+

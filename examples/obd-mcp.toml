@@ -1,0 +1,22 @@
+[server]
+host = "127.0.0.1"
+port = 8765
+http_path = "/mcp"
+log_level = "INFO"
+
+[storage]
+path = ".state/issues.sqlite3"
+
+[privacy]
+allow_full_vin = false
+vin_suffix_length = 4
+
+[[vehicles]]
+id = "demo"
+name = "Synthetic demo vehicle"
+driver = "simulator"
+profile = "profiles/synthetic-powertrain.toml"
+
+[vehicles.options]
+seed = 7
+
