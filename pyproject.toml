@@ -61,7 +61,7 @@ dev = [
   "pytest-asyncio>=1.4,<2",
   "pytest-cov>=7,<8",
   "ruff>=0.14,<0.15",
-  "twine>=6.2,<7",
+  "twine>=6.2,<8",
 ]
 
 [tool.hatch.build.targets.wheel]
