@@ -30,6 +30,11 @@ def _load_script(name: str) -> ModuleType:
 
 check_repository_data = _load_script("check_repository_data")
 check_distribution = _load_script("check_distribution")
+PROJECT_ROOT = Path(__file__).parents[1]
+
+
+def _project_legal_file(filename: str) -> bytes:
+    return (PROJECT_ROOT / filename).read_bytes()
 
 
 def _raw_vin() -> str:
@@ -51,16 +56,24 @@ def _safe_wheel_entries() -> dict[str, bytes]:
         "obd_mcp/server.py": b"def main() -> None:\n    return None\n",
         "obd_mcp/py.typed": b"",
         "obd_mcp_server-0.1.0.dist-info/METADATA": (
-            b"Metadata-Version: 2.4\nName: obd-mcp-server\nVersion: 0.1.0\n"
+            b"Metadata-Version: 2.4\n"
+            b"Name: obd-mcp-server\n"
+            b"Version: 0.1.0\n"
+            b"License-Expression: Apache-2.0 OR MIT\n"
+            b"License-File: LICENSE\n"
+            b"License-File: LICENSE-MIT\n"
+            b"License-File: NOTICE\n"
+            b"License-File: THIRD_PARTY_NOTICES.md\n"
         ),
         "obd_mcp_server-0.1.0.dist-info/WHEEL": b"Wheel-Version: 1.0\n",
         "obd_mcp_server-0.1.0.dist-info/entry_points.txt": (
             b"[console_scripts]\nobd-mcp = obd_mcp.cli:main\n"
         ),
-        "obd_mcp_server-0.1.0.dist-info/licenses/LICENSE": b"Apache License\n",
-        "obd_mcp_server-0.1.0.dist-info/licenses/NOTICE": b"Project notice\n",
+        "obd_mcp_server-0.1.0.dist-info/licenses/LICENSE": _project_legal_file("LICENSE"),
+        "obd_mcp_server-0.1.0.dist-info/licenses/LICENSE-MIT": _project_legal_file("LICENSE-MIT"),
+        "obd_mcp_server-0.1.0.dist-info/licenses/NOTICE": _project_legal_file("NOTICE"),
         "obd_mcp_server-0.1.0.dist-info/licenses/THIRD_PARTY_NOTICES.md": (
-            b"# Third-party notices\n"
+            _project_legal_file("THIRD_PARTY_NOTICES.md")
         ),
         "obd_mcp_server-0.1.0.dist-info/RECORD": b"",
     }
@@ -106,9 +119,22 @@ def _write_sdist(path: Path, entries: dict[str, bytes]) -> None:
 def _safe_sdist_entries(prefix: str = "obd_mcp_server-0.1.0") -> dict[str, bytes]:
     return {
         f"{prefix}/.gitignore": b".venv/\ndist/\n",
-        f"{prefix}/PKG-INFO": b"Name: obd-mcp-server\nVersion: 0.1.0\n",
+        f"{prefix}/PKG-INFO": (
+            b"Metadata-Version: 2.4\n"
+            b"Name: obd-mcp-server\n"
+            b"Version: 0.1.0\n"
+            b"License-Expression: Apache-2.0 OR MIT\n"
+            b"License-File: LICENSE\n"
+            b"License-File: LICENSE-MIT\n"
+            b"License-File: NOTICE\n"
+            b"License-File: THIRD_PARTY_NOTICES.md\n"
+        ),
         f"{prefix}/pyproject.toml": b'[build-system]\nbuild-backend = "hatchling.build"\n',
         f"{prefix}/README.md": b"# OBD MCP Server\n",
+        f"{prefix}/LICENSE": _project_legal_file("LICENSE"),
+        f"{prefix}/LICENSE-MIT": _project_legal_file("LICENSE-MIT"),
+        f"{prefix}/NOTICE": _project_legal_file("NOTICE"),
+        f"{prefix}/THIRD_PARTY_NOTICES.md": _project_legal_file("THIRD_PARTY_NOTICES.md"),
         f"{prefix}/src/obd_mcp/__init__.py": b'"""Safe package."""\n',
         f"{prefix}/src/obd_mcp/py.typed": b"",
         f"{prefix}/docs/safety.md": b"# Safety\n",
@@ -259,6 +285,115 @@ def test_distribution_scanner_accepts_allowlisted_wheel(tmp_path: Path) -> None:
     assert check_distribution.check(wheel) == []
 
 
+def test_distribution_scanner_requires_all_project_licenses_in_wheel(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / "obd_mcp_server-0.1.0-py3-none-any.whl"
+    entries = _safe_wheel_entries()
+    del entries["obd_mcp_server-0.1.0.dist-info/licenses/LICENSE-MIT"]
+    _write_wheel(wheel, entries)
+
+    failures = check_distribution.check(wheel)
+
+    assert any("missing required project license file(s): LICENSE-MIT" in item for item in failures)
+
+
+def test_distribution_scanner_rejects_decoy_dist_info_license(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / "obd_mcp_server-0.1.0-py3-none-any.whl"
+    entries = _safe_wheel_entries()
+    del entries["obd_mcp_server-0.1.0.dist-info/licenses/LICENSE-MIT"]
+    entries["decoy-9.9.9.dist-info/licenses/LICENSE-MIT"] = b"MIT License\n"
+    _write_wheel(wheel, entries)
+
+    failures = check_distribution.check(wheel)
+
+    assert any("exactly one .dist-info directory" in item for item in failures)
+    assert any("missing required project license file(s): LICENSE-MIT" in item for item in failures)
+
+
+def test_distribution_scanner_requires_dual_license_metadata_in_wheel(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / "obd_mcp_server-0.1.0-py3-none-any.whl"
+    entries = _safe_wheel_entries()
+    metadata_path = "obd_mcp_server-0.1.0.dist-info/METADATA"
+    entries[metadata_path] = entries[metadata_path].replace(
+        b"License-Expression: Apache-2.0 OR MIT\n",
+        b"License-Expression: Apache-2.0\n",
+    )
+    _write_wheel(wheel, entries)
+
+    failures = check_distribution.check(wheel)
+
+    assert any("License-Expression must be exactly" in item for item in failures)
+
+
+def test_distribution_scanner_requires_core_metadata_24_in_wheel(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / "obd_mcp_server-0.1.0-py3-none-any.whl"
+    entries = _safe_wheel_entries()
+    metadata_path = "obd_mcp_server-0.1.0.dist-info/METADATA"
+    entries[metadata_path] = entries[metadata_path].replace(
+        b"Metadata-Version: 2.4\n",
+        b"Metadata-Version: 2.3\n",
+    )
+    _write_wheel(wheel, entries)
+
+    failures = check_distribution.check(wheel)
+
+    assert any("Metadata-Version must be 2.4 or newer" in item for item in failures)
+
+
+def test_distribution_scanner_rejects_legacy_license_classifier_in_wheel(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / "obd_mcp_server-0.1.0-py3-none-any.whl"
+    entries = _safe_wheel_entries()
+    metadata_path = "obd_mcp_server-0.1.0.dist-info/METADATA"
+    entries[metadata_path] += b"Classifier: License :: OSI Approved :: MIT License\n"
+    _write_wheel(wheel, entries)
+
+    failures = check_distribution.check(wheel)
+
+    assert any("legacy License classifiers are not allowed" in item for item in failures)
+
+
+def test_distribution_scanner_matches_dist_info_to_wheel_identity(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / "obd_mcp_server-0.1.0-py3-none-any.whl"
+    entries = {
+        name.replace(
+            "obd_mcp_server-0.1.0.dist-info",
+            "unrelated-9.9.dist-info",
+        ): data
+        for name, data in _safe_wheel_entries().items()
+    }
+    _write_wheel(wheel, entries)
+
+    failures = check_distribution.check(wheel)
+
+    assert any(
+        "metadata directory must be obd_mcp_server-0.1.0.dist-info" in item for item in failures
+    )
+
+
+def test_distribution_scanner_rejects_truncated_project_license_in_wheel(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / "obd_mcp_server-0.1.0-py3-none-any.whl"
+    entries = _safe_wheel_entries()
+    entries["obd_mcp_server-0.1.0.dist-info/licenses/LICENSE-MIT"] = b"MIT License\n"
+    _write_wheel(wheel, entries)
+
+    failures = check_distribution.check(wheel)
+
+    assert any("LICENSE-MIT: packaged content does not match" in item for item in failures)
+
+
 def test_distribution_scanner_rejects_unexpected_wheel_path_and_sensitive_content(
     tmp_path: Path,
 ) -> None:
@@ -341,6 +476,63 @@ def test_distribution_scanner_accepts_allowlisted_normalized_sdist(tmp_path: Pat
     _write_sdist(sdist, _safe_sdist_entries())
 
     assert check_distribution.check(sdist) == []
+
+
+def test_distribution_scanner_requires_all_project_licenses_in_sdist(
+    tmp_path: Path,
+) -> None:
+    sdist = tmp_path / "obd_mcp_server-0.1.0.tar.gz"
+    entries = _safe_sdist_entries()
+    del entries["obd_mcp_server-0.1.0/LICENSE-MIT"]
+    _write_sdist(sdist, entries)
+
+    failures = check_distribution.check(sdist)
+
+    assert any("missing required project license file(s): LICENSE-MIT" in item for item in failures)
+
+
+def test_distribution_scanner_requires_license_file_metadata_in_sdist(
+    tmp_path: Path,
+) -> None:
+    sdist = tmp_path / "obd_mcp_server-0.1.0.tar.gz"
+    entries = _safe_sdist_entries()
+    metadata_path = "obd_mcp_server-0.1.0/PKG-INFO"
+    entries[metadata_path] = entries[metadata_path].replace(
+        b"License-File: LICENSE-MIT\n",
+        b"",
+    )
+    _write_sdist(sdist, entries)
+
+    failures = check_distribution.check(sdist)
+
+    assert any("License-File fields must list exactly" in item for item in failures)
+
+
+def test_distribution_scanner_rejects_legacy_license_field_in_sdist(
+    tmp_path: Path,
+) -> None:
+    sdist = tmp_path / "obd_mcp_server-0.1.0.tar.gz"
+    entries = _safe_sdist_entries()
+    metadata_path = "obd_mcp_server-0.1.0/PKG-INFO"
+    entries[metadata_path] += b"License: Apache-2.0\n"
+    _write_sdist(sdist, entries)
+
+    failures = check_distribution.check(sdist)
+
+    assert any("legacy License field is not allowed" in item for item in failures)
+
+
+def test_distribution_scanner_rejects_truncated_project_license_in_sdist(
+    tmp_path: Path,
+) -> None:
+    sdist = tmp_path / "obd_mcp_server-0.1.0.tar.gz"
+    entries = _safe_sdist_entries()
+    entries["obd_mcp_server-0.1.0/LICENSE"] = b"Apache License\n"
+    _write_sdist(sdist, entries)
+
+    failures = check_distribution.check(sdist)
+
+    assert any("LICENSE: packaged content does not match" in item for item in failures)
 
 
 def test_distribution_scanner_rejects_unallowlisted_and_mixed_prefix_sdist(

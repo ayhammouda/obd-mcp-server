@@ -16,8 +16,9 @@ Use Python 3.11+ with the stable 1.x MCP Python SDK. Keep the diagnostic domain
 and driver interfaces independent of MCP, and implement the MCP server as a
 thin adapter over `DiagnosticService`.
 
-The core is licensed under Apache-2.0. Hardware libraries are optional extras;
-the initial ELM327 integration uses MIT-licensed `py-obdii`. GPL-only
+The core is dual-licensed under `Apache-2.0 OR MIT`, at the recipient's option.
+Hardware libraries are optional extras; the initial ELM327 integration uses
+MIT-licensed `py-obdii`. GPL-only
 `python-OBD` is deliberately not a dependency so downstream users are not
 silently moved to a copyleft distribution obligation.
 
@@ -80,4 +81,3 @@ hardware abstractions.
 - Add a Linux SocketCAN/ISO-TP driver only after replay and virtual-CAN tests.
 - Re-evaluate `py-obdii` when it reaches a stable release.
 - Revisit MCP 2.x only through a separate migration ADR.
-

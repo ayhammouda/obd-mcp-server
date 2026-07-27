@@ -14,6 +14,8 @@ import sys
 import tarfile
 import zipfile
 from dataclasses import dataclass
+from email import policy
+from email.parser import BytesParser
 from pathlib import Path, PurePosixPath
 
 try:
@@ -34,6 +36,8 @@ MAX_MEMBER_BYTES = 5 * 1024 * 1024
 MAX_TOTAL_UNCOMPRESSED_BYTES = 50 * 1024 * 1024
 MAX_MEMBERS = 2_048
 
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+_PROJECT_WHEEL_NAME = "obd_mcp_server"
 _DIST_INFO_RE = re.compile(r"^[A-Za-z0-9_.-]+\.dist-info$")
 _SDIST_PREFIX_RE = re.compile(r"^obd_mcp_server-[A-Za-z0-9][A-Za-z0-9._+-]*$")
 _PACKAGE_PART_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -41,6 +45,15 @@ _DOC_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+\.md$")
 _EXAMPLE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+\.(?:json|toml)$")
 _SCRIPT_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.py$")
 
+_EXPECTED_LICENSE_EXPRESSION = "Apache-2.0 OR MIT"
+_REQUIRED_PROJECT_LICENSES = frozenset(
+    {
+        "LICENSE",
+        "LICENSE-MIT",
+        "NOTICE",
+        "THIRD_PARTY_NOTICES.md",
+    }
+)
 _SDIST_ROOT_FILES = {
     # Hatchling 1.31 force-includes the active VCS exclusion file in sdists.
     # Permit only this exact root path; nested/additional ignore files still fail.
@@ -48,12 +61,10 @@ _SDIST_ROOT_FILES = {
     "CHANGELOG.md",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
-    "LICENSE",
-    "NOTICE",
     "PKG-INFO",
     "README.md",
     "SECURITY.md",
-    "THIRD_PARTY_NOTICES.md",
+    *_REQUIRED_PROJECT_LICENSES,
     "build-constraints.in",
     "build-constraints.txt",
     "pyproject.toml",
@@ -64,11 +75,7 @@ _DIST_INFO_FILES = {
     "WHEEL",
     "entry_points.txt",
 }
-_DIST_INFO_LICENSES = {
-    "LICENSE",
-    "NOTICE",
-    "THIRD_PARTY_NOTICES.md",
-}
+_DIST_INFO_LICENSES = set(_REQUIRED_PROJECT_LICENSES)
 _SDIST_DIRECTORIES = {
     "docs",
     "examples",
@@ -330,6 +337,153 @@ def _normalized_sdist_paths(
     return normalized, failures
 
 
+def _required_license_failures(
+    normalized: list[tuple[ArtifactMember, PurePosixPath]],
+    *,
+    wheel: bool,
+) -> list[str]:
+    if wheel:
+        dist_info_roots = {
+            member_path.parts[0]
+            for _member, member_path in normalized
+            if member_path.parts and _DIST_INFO_RE.fullmatch(member_path.parts[0]) is not None
+        }
+        failures = []
+        if len(dist_info_roots) != 1:
+            failures.append("wheel must contain exactly one .dist-info directory")
+        record_roots = {
+            member_path.parts[0]
+            for member, member_path in normalized
+            if member.data is not None
+            and len(member_path.parts) == 2
+            and _DIST_INFO_RE.fullmatch(member_path.parts[0]) is not None
+            and member_path.parts[1] == "RECORD"
+        }
+        if len(record_roots) != 1:
+            return failures
+        project_dist_info = next(iter(record_roots))
+        present = {
+            member_path.parts[2]: member.data
+            for member, member_path in normalized
+            if member.data is not None
+            and len(member_path.parts) == 3
+            and member_path.parts[0] == project_dist_info
+            and member_path.parts[1] == "licenses"
+        }
+    else:
+        failures = []
+        present = {
+            member_path.name: member.data
+            for member, member_path in normalized
+            if member.data is not None and len(member_path.parts) == 1
+        }
+    missing = sorted(_REQUIRED_PROJECT_LICENSES - present.keys())
+    if missing:
+        failures.append("missing required project license file(s): " + ", ".join(missing))
+    for filename in sorted(_REQUIRED_PROJECT_LICENSES & present.keys()):
+        try:
+            expected = (_PROJECT_ROOT / filename).read_bytes()
+        except OSError:
+            failures.append(f"{filename}: cannot read the repository source file")
+            continue
+        if present[filename] != expected:
+            failures.append(f"{filename}: packaged content does not match the repository source")
+    return failures
+
+
+def _wheel_identity_failures(
+    path: Path,
+    normalized: list[tuple[ArtifactMember, PurePosixPath]],
+) -> list[str]:
+    filename_parts = path.name.removesuffix(".whl").split("-")
+    if len(filename_parts) not in {5, 6}:
+        return ["wheel filename does not follow the expected name-version-tag structure"]
+    distribution, version = filename_parts[:2]
+    if distribution != _PROJECT_WHEEL_NAME:
+        return [f"wheel filename must use the {_PROJECT_WHEEL_NAME!r} distribution name"]
+
+    record_roots = {
+        member_path.parts[0]
+        for member, member_path in normalized
+        if member.data is not None
+        and len(member_path.parts) == 2
+        and _DIST_INFO_RE.fullmatch(member_path.parts[0]) is not None
+        and member_path.parts[1] == "RECORD"
+    }
+    if len(record_roots) != 1:
+        return []
+    expected_root = f"{distribution}-{version}.dist-info"
+    if record_roots != {expected_root}:
+        return [f"wheel project metadata directory must be {expected_root}"]
+    return []
+
+
+def _license_metadata_failures(
+    normalized: list[tuple[ArtifactMember, PurePosixPath]],
+    *,
+    wheel: bool,
+) -> list[str]:
+    if wheel:
+        record_roots = {
+            member_path.parts[0]
+            for member, member_path in normalized
+            if member.data is not None
+            and len(member_path.parts) == 2
+            and _DIST_INFO_RE.fullmatch(member_path.parts[0]) is not None
+            and member_path.parts[1] == "RECORD"
+        }
+        if len(record_roots) != 1:
+            return []
+        metadata_path = PurePosixPath(next(iter(record_roots)), "METADATA")
+    else:
+        metadata_path = PurePosixPath("PKG-INFO")
+
+    metadata_members = [
+        member
+        for member, member_path in normalized
+        if member_path == metadata_path and member.data is not None
+    ]
+    if len(metadata_members) != 1:
+        return [f"{metadata_path}: package metadata must be present exactly once"]
+
+    metadata = BytesParser(policy=policy.default).parsebytes(
+        metadata_members[0].data,
+        headersonly=True,
+    )
+    if metadata.defects:
+        return [f"{metadata_path}: package metadata contains malformed headers"]
+
+    failures: list[str] = []
+    versions = [str(value).strip() for value in metadata.get_all("Metadata-Version", [])]
+    version_match = re.fullmatch(r"([0-9]+)\.([0-9]+)", versions[0]) if len(versions) == 1 else None
+    if version_match is None or tuple(map(int, version_match.groups())) < (2, 4):
+        failures.append(f"{metadata_path}: Metadata-Version must be 2.4 or newer")
+
+    expressions = [str(value).strip() for value in metadata.get_all("License-Expression", [])]
+    if expressions != [_EXPECTED_LICENSE_EXPRESSION]:
+        failures.append(
+            f"{metadata_path}: License-Expression must be exactly {_EXPECTED_LICENSE_EXPRESSION!r}"
+        )
+
+    license_files = [str(value).strip() for value in metadata.get_all("License-File", [])]
+    if len(license_files) != len(_REQUIRED_PROJECT_LICENSES) or set(license_files) != set(
+        _REQUIRED_PROJECT_LICENSES
+    ):
+        required = ", ".join(sorted(_REQUIRED_PROJECT_LICENSES))
+        failures.append(f"{metadata_path}: License-File fields must list exactly: {required}")
+
+    classifiers = [str(value).strip() for value in metadata.get_all("Classifier", [])]
+    if any(value.startswith("License ::") for value in classifiers):
+        failures.append(
+            f"{metadata_path}: legacy License classifiers are not allowed with License-Expression"
+        )
+    if metadata.get_all("License", []):
+        failures.append(
+            f"{metadata_path}: legacy License field is not allowed with License-Expression"
+        )
+    return failures
+
+
 def check(path: Path) -> list[str]:
     """Return release-safety failures for one wheel or source distribution."""
 
@@ -349,10 +503,29 @@ def check(path: Path) -> list[str]:
         normalized = [(member, PurePosixPath(member.name)) for member in members]
         allowlisted = _safe_wheel_path
         failures.extend(f"{path.name}: {failure}" for failure in _wheel_record_failures(members))
+        failures.extend(
+            f"{path.name}: {failure}" for failure in _wheel_identity_failures(path, normalized)
+        )
+        failures.extend(
+            f"{path.name}: {failure}"
+            for failure in _required_license_failures(normalized, wheel=True)
+        )
+        failures.extend(
+            f"{path.name}: {failure}"
+            for failure in _license_metadata_failures(normalized, wheel=True)
+        )
     else:
         normalized, prefix_failures = _normalized_sdist_paths(members)
         failures.extend(f"{path.name}: {failure}" for failure in prefix_failures)
         allowlisted = _safe_sdist_path
+        failures.extend(
+            f"{path.name}: {failure}"
+            for failure in _required_license_failures(normalized, wheel=False)
+        )
+        failures.extend(
+            f"{path.name}: {failure}"
+            for failure in _license_metadata_failures(normalized, wheel=False)
+        )
 
     for member, member_path in normalized:
         display = member.name

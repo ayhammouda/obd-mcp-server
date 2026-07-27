@@ -81,9 +81,9 @@ git commit -s -m "feat: describe the change"
 ```
 
 The sign-off means you have the right to submit the contribution under this
-project's license. The sign-off name and email must match the commit author,
-and merge commits are checked too. It does not cure missing rights in
-third-party data.
+project's dual-license terms, allowing recipients to choose Apache-2.0 or MIT.
+The sign-off name and email must match the commit author, and merge commits are
+checked too. It does not cure missing rights in third-party data.
 
 ## Pull requests
 

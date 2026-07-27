@@ -239,6 +239,8 @@ Safety-policy changes require tests and focused review.
 
 ## License
 
-Apache License 2.0. See
-[LICENSE](https://github.com/ayhammouda/obd-mcp-server/blob/main/LICENSE) and
-[NOTICE](https://github.com/ayhammouda/obd-mcp-server/blob/main/NOTICE).
+Dual-licensed under the Apache License 2.0 or the MIT License, at your option.
+See
+[LICENSE](https://github.com/ayhammouda/obd-mcp-server/blob/main/LICENSE),
+[LICENSE-MIT](https://github.com/ayhammouda/obd-mcp-server/blob/main/LICENSE-MIT),
+and [NOTICE](https://github.com/ayhammouda/obd-mcp-server/blob/main/NOTICE).

@@ -9,6 +9,7 @@ All notable changes will be documented here. The format follows
 ### Added
 
 - Generic read-only diagnostic core and MCP facade.
+- MIT licensing option alongside Apache-2.0.
 - Simulator-first workflow and optional ELM327 adapter integration.
 - Source-labeled external profile model.
 - Local issue timeline, VIN fingerprinting, concurrency controls, and cache.
@@ -17,4 +18,3 @@ All notable changes will be documented here. The format follows
 ## [0.1.0] - Unreleased
 
 Initial public foundation. No package or registry release has been claimed.
-

@@ -7,8 +7,9 @@ and does not promise compliance in every jurisdiction or use case.
 
 ## Separate code rights from data rights
 
-The repository's original source code is offered under Apache-2.0. That license
-does not grant rights to:
+The repository's original source code is offered under
+`Apache-2.0 OR MIT`, at the recipient's option. Neither license grants rights
+to:
 
 - vehicle-manufacturer documentation or databases;
 - diagnostic-tool software or screenshots;
@@ -17,7 +18,7 @@ does not grant rights to:
 - vehicle or product trademarks.
 
 A profile or fixture needs its own lawful source and license even when the code
-that loads it is Apache-2.0.
+that loads it is dual-licensed under Apache-2.0 or MIT.
 
 ## Repository distribution rule
 
