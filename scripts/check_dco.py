@@ -17,6 +17,10 @@ _SIGN_OFF_PATTERN = re.compile(
 )
 _RECORD_SEPARATOR = "\x1e"
 _FIELD_SEPARATOR = "\x1f"
+_ALLOW_DEPENDABOT_FLAG = "--allow-dependabot"
+_DEPENDABOT_AUTHOR_NAME = "dependabot[bot]"
+_DEPENDABOT_AUTHOR_EMAIL = "49699333+dependabot[bot]@users.noreply.github.com"
+_DEPENDABOT_SIGNER_EMAIL = "support@github.com"
 
 
 class Commit(NamedTuple):
@@ -64,7 +68,11 @@ def _load_commits(base_sha: str, head_sha: str) -> list[Commit]:
     return commits
 
 
-def _has_matching_author_signoff(commit: Commit) -> bool:
+def _has_matching_author_signoff(
+    commit: Commit,
+    *,
+    allow_dependabot: bool = False,
+) -> bool:
     expected_name = " ".join(commit.author_name.split()).casefold()
     expected_email = commit.author_email.strip().casefold()
     for match in _SIGN_OFF_PATTERN.finditer(commit.message):
@@ -72,19 +80,36 @@ def _has_matching_author_signoff(commit: Commit) -> bool:
         signer_email = match.group("email").strip().casefold()
         if signer_name == expected_name and signer_email == expected_email:
             return True
+        if (
+            allow_dependabot
+            and expected_name == _DEPENDABOT_AUTHOR_NAME
+            and expected_email == _DEPENDABOT_AUTHOR_EMAIL
+            and signer_name == _DEPENDABOT_AUTHOR_NAME
+            and signer_email == _DEPENDABOT_SIGNER_EMAIL
+        ):
+            return True
     return False
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    allow_dependabot = bool(args and args[0] == _ALLOW_DEPENDABOT_FLAG)
+    if allow_dependabot:
+        args.pop(0)
     if len(args) != 2 or any(_SHA_PATTERN.fullmatch(value) is None for value in args):
-        print("usage: check_dco.py BASE_SHA HEAD_SHA", file=sys.stderr)
+        print(
+            "usage: check_dco.py [--allow-dependabot] BASE_SHA HEAD_SHA",
+            file=sys.stderr,
+        )
         return 2
 
     unsigned = [
         commit.sha
         for commit in _load_commits(args[0], args[1])
-        if not _has_matching_author_signoff(commit)
+        if not _has_matching_author_signoff(
+            commit,
+            allow_dependabot=allow_dependabot,
+        )
     ]
     if unsigned:
         print(

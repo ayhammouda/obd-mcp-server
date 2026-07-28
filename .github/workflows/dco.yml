@@ -11,20 +11,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Accept GitHub-authenticated Dependabot updates
-        if: github.actor == 'dependabot[bot]'
-        run: echo "Dependabot app commits are exempt from contributor DCO sign-off."
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        if: github.actor != 'dependabot[bot]'
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        if: github.actor != 'dependabot[bot]'
         with:
           python-version: "3.11"
-      - name: Verify commit sign-offs
-        if: github.actor != 'dependabot[bot]'
+      - name: Verify Dependabot PR commit sign-offs
+        if: github.event.pull_request.user.login == 'dependabot[bot]'
+        run: >-
+          python scripts/check_dco.py
+          --allow-dependabot
+          ${{ github.event.pull_request.base.sha }}
+          ${{ github.event.pull_request.head.sha }}
+      - name: Verify contributor PR commit sign-offs
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
         run: >-
           python scripts/check_dco.py
           ${{ github.event.pull_request.base.sha }}
