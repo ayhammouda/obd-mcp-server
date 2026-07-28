@@ -17,19 +17,18 @@ unlicensed data will not be accepted.
 
 ## Development setup
 
-From a current checkout:
+Clone the repository and install all development dependencies:
 
 ```bash
+git clone https://github.com/ayhammouda/obd-mcp-server.git
+cd obd-mcp-server
 uv sync --all-extras
 uv run pytest
 ```
 
-The GitHub repository is a pre-publication setup item. Clone instructions
-should be added only after the repository exists and its ownership is
-verified.
-
-Create a focused branch, keep the change small, and add tests. Do not use a
-real vehicle for ordinary development or CI.
+External contributors should fork the repository, create a focused branch from
+the latest `main`, keep the change small, and add tests. Do not use a real
+vehicle for ordinary development or CI.
 
 For built-in drivers, `obd-mcp check-config` validates driver options,
 profiles, and optional dependency availability without constructing a driver
@@ -85,6 +84,11 @@ project's dual-license terms, allowing recipients to choose Apache-2.0 or MIT.
 The sign-off name and email must match the commit author, and merge commits are
 checked too. It does not cure missing rights in third-party data.
 
+Pull requests created by GitHub's authenticated Dependabot app are exempt
+because their generated commits cannot carry contributor sign-offs. This
+exception is based on the trusted GitHub actor, not commit author text; every
+human-authored commit still requires a sign-off.
+
 ## Pull requests
 
 Explain:
@@ -98,7 +102,9 @@ Explain:
 
 Do not mix unrelated refactors with a safety or driver change.
 
-The maintainer must publish a verified private conduct-reporting contact and
-enable private vulnerability reporting before accepting public contributions.
-Until those channels exist, do not send sensitive conduct or security details
-through public issues.
+Use GitHub's private
+[Report a vulnerability](https://github.com/ayhammouda/obd-mcp-server/security/advisories/new)
+flow for security or vehicle-safety boundary disclosures. For conduct on
+GitHub, use GitHub's private platform reporting controls described in
+`CODE_OF_CONDUCT.md`. Never send sensitive conduct, security, VIN, capture, or
+credential details through public issues.

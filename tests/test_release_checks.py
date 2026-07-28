@@ -131,6 +131,7 @@ def _safe_sdist_entries(prefix: str = "obd_mcp_server-0.1.0") -> dict[str, bytes
         ),
         f"{prefix}/pyproject.toml": b'[build-system]\nbuild-backend = "hatchling.build"\n',
         f"{prefix}/README.md": b"# OBD MCP Server\n",
+        f"{prefix}/SUPPORT.md": b"# Support\n",
         f"{prefix}/LICENSE": _project_legal_file("LICENSE"),
         f"{prefix}/LICENSE-MIT": _project_legal_file("LICENSE-MIT"),
         f"{prefix}/NOTICE": _project_legal_file("NOTICE"),
@@ -275,7 +276,37 @@ data_type = "uint8"
     failures = check_repository_data.check_bundled_profiles(invalid_root)
 
     assert len(failures) == 1
-    assert "read-only UDS" in failures[0]
+    assert "profile validation failed" in failures[0]
+
+
+def test_bundled_profile_check_does_not_expose_validation_details(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from obd_mcp.errors import ProfileValidationError
+    from obd_mcp.profiles import ProfileLoader
+
+    profile_root = tmp_path / "profiles"
+    profile_root.mkdir()
+    (profile_root / "candidate.toml").write_text("schema_version = 1\n", encoding="utf-8")
+    sensitive_detail = "sk-" + ("X" * 32)
+
+    def reject_profile(
+        _self: ProfileLoader,
+        _path: Path,
+        *,
+        bundled: bool = False,
+    ) -> None:
+        del bundled
+        raise ProfileValidationError(sensitive_detail)
+
+    monkeypatch.setattr(ProfileLoader, "load_path", reject_profile)
+
+    failures = check_repository_data.check_bundled_profiles(profile_root)
+
+    assert len(failures) == 1
+    assert "profile validation failed" in failures[0]
+    assert sensitive_detail not in failures[0]
 
 
 def test_distribution_scanner_accepts_allowlisted_wheel(tmp_path: Path) -> None:

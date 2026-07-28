@@ -21,15 +21,15 @@ Project maintainers may edit, remove, or reject comments, commits, issues,
 pull requests, and other contributions that violate this standard, and may
 temporarily or permanently ban contributors for inappropriate behavior.
 
-Before the project accepts public contributions, the repository owner must
-publish and verify a private conduct-reporting contact. No such project contact
-is configured in this pre-publication source tree; that is a publication
-blocker. GitHub's platform reporting and blocking mechanisms may still be used
-for conduct occurring on GitHub, but they are not a substitute for the
-project-specific private channel.
+For conduct occurring on GitHub, use the private **Report content** option in
+the relevant issue, pull request, comment, or account menu, together with
+GitHub's blocking controls when needed. Do not reproduce harassment, personal
+data, or other sensitive evidence in a public project issue.
 
-Security and unsafe-command disclosures follow `SECURITY.md` and must not be
-included in a conduct report or public issue.
+Project-specific reports that also involve security, privacy, or unsafe vehicle
+behavior follow `SECURITY.md` and may use the repository's private
+**Report a vulnerability** flow. Do not include those details in a conduct
+report or public issue.
 
 Maintainers will respect the privacy and safety of reporters as far as
 reasonably possible.

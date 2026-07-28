@@ -117,3 +117,34 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@2834a314042ef964da07689278dd1e9d773e8afd # v1.14.1
         with:
           packages-dir: dist/
+
+  github-release:
+    if: >-
+      always() &&
+      needs.verify.result == 'success' &&
+      (
+        inputs.publish_to_pypi == false ||
+        needs.publish.result == 'success'
+      )
+    needs: [verify, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-distributions-${{ inputs.tag }}
+          path: dist
+      - name: Create checksums
+        run: sha256sum dist/* > SHA256SUMS
+      - name: Create GitHub release from verified artifacts
+        run: >-
+          gh release create "${RELEASE_TAG}" dist/* SHA256SUMS
+          --repo "${GITHUB_REPOSITORY}"
+          --verify-tag
+          --generate-notes
+          --title "${RELEASE_TAG}"

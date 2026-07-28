@@ -1,6 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Usage questions and community ideas
+    url: https://github.com/ayhammouda/obd-mcp-server/discussions
+    about: Ask for help, share simulator results, or discuss extensions.
   - name: Private security or vehicle-safety report
     url: https://github.com/ayhammouda/obd-mcp-server/security/advisories/new
     about: Do not disclose unsafe commands, exploits, VINs, or captures publicly.
-

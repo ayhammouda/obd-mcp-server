@@ -5,15 +5,17 @@ each gate for the first and every subsequent release.
 
 ## One-time setup
 
-- [ ] Create and verify `github.com/ayhammouda/obd-mcp-server`.
+- [x] Create and verify `github.com/ayhammouda/obd-mcp-server`.
 - [ ] Reserve and control the intended PyPI project name.
 - [ ] Confirm that the source and distribution names do not collide with an
       unrelated package.
-- [ ] Enable branch protection/rulesets and require CI/security review.
-- [ ] Enable and test private vulnerability reporting, update `SECURITY.md`,
-      and enable Dependabot security updates.
-- [ ] Publish and test a private conduct-reporting contact, then update
+- [x] Enable branch protection and require CI/security checks.
+- [x] Enable private vulnerability reporting, update `SECURITY.md`, and enable
+      Dependabot security updates.
+- [x] Publish conduct-reporting guidance for GitHub-hosted community spaces in
       `CODE_OF_CONDUCT.md`.
+- [x] Configure repository metadata, community templates, merge policy, and a
+      custom social-preview asset.
 - [ ] Configure a PyPI trusted publisher for the exact repository/workflow.
 - [ ] Decide whether MCP Registry publication is desired; validate its current
       metadata schema from official docs at that time.
@@ -115,10 +117,7 @@ over compiled stdio and confirms the seven expected tools.
 
 The source tree alone cannot complete these items:
 
-- the GitHub repository and package registry names must be created and
-  controlled by the maintainer;
-- branch rules, private vulnerability reporting, and a private conduct contact
-  must be configured and verified on the live repository;
+- the package registry name must be reserved and controlled by the maintainer;
 - the PyPI trusted-publisher identity and release environment must be created;
 - the optional ELM327 integration needs a reviewed stationary hardware run
   before any compatibility claim;

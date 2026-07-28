@@ -1,18 +1,53 @@
 # OBD MCP Server
 
-A local-first, read-only, OEM-neutral Model Context Protocol server for vehicle
-diagnostics.
+[![CI](https://github.com/ayhammouda/obd-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/ayhammouda/obd-mcp-server/actions/workflows/ci.yml)
+[![Security](https://github.com/ayhammouda/obd-mcp-server/actions/workflows/security.yml/badge.svg)](https://github.com/ayhammouda/obd-mcp-server/actions/workflows/security.yml)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://github.com/ayhammouda/obd-mcp-server/blob/main/pyproject.toml)
+[![License: Apache-2.0 OR MIT](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://github.com/ayhammouda/obd-mcp-server#license)
 
-The project turns a narrow set of diagnostic observations into structured MCP
-tools while keeping raw protocol access and state-changing vehicle operations
-outside the AI boundary. It starts with a deterministic simulator, supports an
-optional ELM327 adapter, and provides extension points for additional drivers
-and externally mounted ECU profiles.
+A safety-first, local-first MCP server that gives AI clients structured,
+read-only vehicle diagnostic observations without exposing raw protocol access
+or state-changing operations.
+
+Start with a deterministic simulator, optionally connect an ELM327 adapter,
+and extend the server through normalized drivers and source-labeled diagnostic
+profiles. The policy core remains authoritative regardless of the client,
+driver, or profile.
 
 > [!CAUTION]
 > This is pre-release diagnostic software, not a safety system or a substitute
 > for a qualified technician. It must never be used to decide that a vehicle is
 > safe to drive. Do not connect development builds to a moving vehicle.
+
+## Why this project
+
+- **Read-only by construction:** fixed diagnostic capabilities are enforced in
+  the core before a request reaches a driver.
+- **Useful without hardware:** the simulator exercises the complete MCP path
+  on Linux and macOS.
+- **Extensible without raw access:** drivers implement normalized reads, while
+  declarative profiles can only narrow allowlisted operations.
+- **Data-conscious:** VIN-shaped values are rejected, outputs use a local
+  pseudonymous fingerprint, and bundled profiles require redistribution
+  provenance.
+- **Built for review:** safety, privacy, legal/data, threat-model, packaging,
+  and supply-chain checks are part of the repository.
+
+## 30-second simulator demo
+
+Prerequisites: Python 3.11+ and [uv](https://docs.astral.sh/uv/).
+
+```bash
+git clone https://github.com/ayhammouda/obd-mcp-server.git
+cd obd-mcp-server
+uv sync
+uv run python scripts/smoke_mcp.py --command .venv/bin/obd-mcp
+```
+
+The smoke command initializes a real MCP client session, lists the seven typed
+tools, and discovers a synthetic vehicle without hardware. To start the server
+for an MCP client, run `uv run obd-mcp`; stdio stdout is reserved for MCP
+messages.
 
 ## Current scope
 
@@ -38,19 +73,7 @@ Renault/CLIP/DDT/PyRen data, ECU coding, clearing, flashing, actuator control,
 security access, arbitrary CAN/UDS/KWP requests, remote HTTP access, or raw
 capture.
 
-## Quick start from this checkout
-
-Prerequisites: Python 3.11+ and [uv](https://docs.astral.sh/uv/).
-
-```bash
-uv sync
-uv run obd-mcp
-```
-
-Run those commands at the repository root. No public repository or PyPI
-installation is assumed by this pre-release quick start. With no arguments,
-`obd-mcp` starts stdio transport and uses the safe demo vehicle. Stdio stdout
-is reserved for MCP messages.
+## Explore the checkout
 
 Inspect the CLI and validate a configuration without connecting to a vehicle:
 
@@ -222,20 +245,28 @@ Hardware tests are opt-in and never target a real vehicle in CI. See
 
 ## Publishing status
 
-The repository is open-source-ready but not represented as published on PyPI
-or the MCP Registry. The package name, trusted publisher, repository
-protection, tag, artifact, and fresh-install smoke test must all be verified
-before the first release. Private vulnerability reporting and a private conduct
-contact must also be configured. The ELM327 integration has not been validated
-against real hardware. See
+The source repository is public and community-ready, but the project is not
+represented as published on PyPI or the MCP Registry. The package name,
+trusted publisher, release environment, tag, artifact, and fresh-install smoke
+test must all be verified before the first release. The ELM327 integration has
+not been validated against real hardware. See
 [the release runbook](https://github.com/ayhammouda/obd-mcp-server/blob/main/docs/publishing.md).
 
-## Contributing
+## Get involved
 
-Read
-[CONTRIBUTING.md](https://github.com/ayhammouda/obd-mcp-server/blob/main/CONTRIBUTING.md).
-Repository contributors must also follow the repository-local instructions.
-Safety-policy changes require tests and focused review.
+- Ask usage and design questions in
+  [Discussions](https://github.com/ayhammouda/obd-mcp-server/discussions).
+- Report sanitized bugs or propose features through the
+  [issue forms](https://github.com/ayhammouda/obd-mcp-server/issues/new/choose).
+- Read [SUPPORT.md](https://github.com/ayhammouda/obd-mcp-server/blob/main/SUPPORT.md)
+  and
+  [CONTRIBUTING.md](https://github.com/ayhammouda/obd-mcp-server/blob/main/CONTRIBUTING.md)
+  before contributing.
+- If this safety-first approach is useful to you, star the repository so other
+  MCP and automotive developers can find it.
+
+Safety-policy changes require tests and focused review. Never put VINs, vehicle
+captures, credentials, proprietary data, or unsafe commands in a public issue.
 
 ## License
 
