@@ -20,8 +20,8 @@ All notable changes will be documented here. The format follows
 ### Security
 
 - Hardened release dispatch with annotated current-`main` tags, exact-tag
-  confirmation, checksum-pinned MCP metadata validation, and draft-first
-  immutable GitHub Releases.
+  confirmation, MCP metadata validation with a checksum-pinned publisher, and
+  draft-first immutable GitHub Releases.
 
 ## [0.1.0] - Unreleased
 

@@ -122,12 +122,46 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  github-draft:
+    if: >-
+      inputs.create_github_release == true &&
+      inputs.confirm_tag == inputs.tag
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-distributions-${{ inputs.tag }}
+          path: dist
+      - name: Create checksums
+        run: sha256sum dist/* > SHA256SUMS
+      - name: Stage verified artifacts in a GitHub draft
+        run: |
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${RELEASE_TAG} already exists" >&2
+            exit 1
+          fi
+          gh release create "${RELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --generate-notes \
+            --title "${RELEASE_TAG}" \
+            --draft
+          gh release upload "${RELEASE_TAG}" dist/* SHA256SUMS \
+            --repo "${GITHUB_REPOSITORY}"
+
   publish:
     if: >-
       inputs.publish_to_pypi == true &&
       inputs.create_github_release == true &&
       inputs.confirm_tag == inputs.tag
-    needs: verify
+    needs: [verify, github-draft]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: pypi
@@ -153,11 +187,12 @@ jobs:
       inputs.create_github_release == true &&
       inputs.confirm_tag == inputs.tag &&
       needs.verify.result == 'success' &&
+      needs['github-draft'].result == 'success' &&
       (
         inputs.publish_to_pypi == false ||
         needs.publish.result == 'success'
       )
-    needs: [verify, publish]
+    needs: [verify, github-draft, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -166,26 +201,16 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: ${{ inputs.tag }}
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: release-distributions-${{ inputs.tag }}
-          path: dist
-      - name: Create checksums
-        run: sha256sum dist/* > SHA256SUMS
-      - name: Publish immutable GitHub release from verified artifacts
+      - name: Publish the verified immutable GitHub release
         run: |
-          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            echo "Release ${RELEASE_TAG} already exists" >&2
+          IS_DRAFT="$(gh release view "${RELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --json isDraft \
+            --jq .isDraft)"
+          if [[ "${IS_DRAFT}" != "true" ]]; then
+            echo "Release ${RELEASE_TAG} is missing or is not a draft" >&2
             exit 1
           fi
-          gh release create "${RELEASE_TAG}" \
-            --repo "${GITHUB_REPOSITORY}" \
-            --verify-tag \
-            --generate-notes \
-            --title "${RELEASE_TAG}" \
-            --draft
-          gh release upload "${RELEASE_TAG}" dist/* SHA256SUMS \
-            --repo "${GITHUB_REPOSITORY}"
           gh release edit "${RELEASE_TAG}" \
             --repo "${GITHUB_REPOSITORY}" \
             --draft=false \

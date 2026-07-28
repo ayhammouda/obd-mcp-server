@@ -79,6 +79,9 @@ def test_release_workflow_requires_reviewed_immutable_release_inputs() -> None:
         "mcp-publisher_linux_amd64.tar.gz",
         "1370446bbe74d562608e8005a6ccce02d146a661fbd78674e11cc70b9618d6cf",
         "validate server.json",
+        "github-draft:",
+        "needs: [verify, github-draft]",
+        "needs['github-draft'].result == 'success'",
         "gh release create",
         "--draft",
         "gh release upload",
@@ -87,6 +90,8 @@ def test_release_workflow_requires_reviewed_immutable_release_inputs() -> None:
     )
     for fragment in expected_fragments:
         assert fragment in workflow
+    assert workflow.index("\n  github-draft:") < workflow.index("\n  publish:")
+    assert workflow.index("\n  publish:") < workflow.index("\n  github-release:")
 
 
 def test_all_third_party_actions_are_pinned_to_commits() -> None:

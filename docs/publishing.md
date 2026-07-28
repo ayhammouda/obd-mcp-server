@@ -115,13 +115,17 @@ over compiled stdio and confirms the seven expected tools.
 - For a real release, enable `create_github_release`, optionally enable
   `publish_to_pypi`, and type the exact tag into `confirm_tag`. PyPI
   publication cannot run without the matching GitHub release.
+- Stage the GitHub Release as a draft and attach the verified artifacts and
+  checksums before any PyPI upload.
 - Use PyPI OIDC trusted publishing with provenance; do not store a long-lived
   API token.
 - Publish the already tested artifact rather than rebuilding in the publish
   job.
 - Verify the PyPI page, hashes, metadata, license, README, and fresh install.
-- Create the GitHub release as a draft, attach the verified artifacts and
-  checksums, then publish it so release immutability locks the tag and assets.
+- Publish the staged GitHub draft only after the requested PyPI upload
+  succeeds, or immediately when PyPI publishing is skipped, so release
+  immutability locks the tag and assets without leaving an orphaned package if
+  draft creation or asset upload fails.
 - Publish an MCP Registry entry only after validating the current official
   schema and a real client installation.
 
