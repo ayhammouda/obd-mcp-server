@@ -838,7 +838,7 @@ def test_registry_rejects_builtin_override_and_non_driver_plugin(
     with pytest.raises(DriverError, match="override"):
         DriverRegistry(allow_third_party=True).names()
 
-    bad = SimpleNamespace(name="bad", load=lambda: (lambda: object()))
+    bad = SimpleNamespace(name="bad", load=lambda: lambda: object())
     monkeypatch.setattr(
         registry_module.metadata,
         "entry_points",
