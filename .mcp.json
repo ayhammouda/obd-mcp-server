@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "obd": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "${CLAUDE_PROJECT_DIR:-.}",
+        "run",
+        "obd-mcp",
+        "stdio",
+        "--config",
+        "${CLAUDE_PROJECT_DIR:-.}/examples/obd-mcp.toml"
+      ]
+    }
+  }
+}

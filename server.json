@@ -1,0 +1,12 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ayhammouda/obd-mcp-server",
+  "description": "Safety-first, read-only vehicle diagnostics over MCP with a simulator-first local workflow.",
+  "title": "OBD MCP Server",
+  "websiteUrl": "https://github.com/ayhammouda/obd-mcp-server",
+  "repository": {
+    "url": "https://github.com/ayhammouda/obd-mcp-server",
+    "source": "github"
+  },
+  "version": "0.1.0"
+}

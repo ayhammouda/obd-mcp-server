@@ -14,6 +14,14 @@ All notable changes will be documented here. The format follows
 - Source-labeled external profile model.
 - Local issue timeline, VIN fingerprinting, concurrency controls, and cache.
 - Safety, privacy, legal-data, threat-model, contribution, and release policy.
+- Source-only MCP Registry metadata and a simulator-safe project `.mcp.json`.
+- OpenSSF Scorecard reporting and current CodeQL action coverage.
+
+### Security
+
+- Hardened release dispatch with annotated current-`main` tags, exact-tag
+  confirmation, MCP metadata validation with a checksum-pinned publisher, and
+  draft-first immutable GitHub Releases.
 
 ## [0.1.0] - Unreleased
 
