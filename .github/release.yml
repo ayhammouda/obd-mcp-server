@@ -1,0 +1,24 @@
+changelog:
+  categories:
+    - title: Safety and security
+      labels:
+        - safety
+        - security
+    - title: Drivers and profiles
+      labels:
+        - driver
+        - profiles
+    - title: Features and fixes
+      labels:
+        - enhancement
+        - bug
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Dependencies
+      labels:
+        - dependencies
+        - github_actions
+    - title: Other changes
+      labels:
+        - "*"

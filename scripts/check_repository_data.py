@@ -206,8 +206,10 @@ def check_bundled_profiles(root: Path) -> list[str]:
     for path in candidates:
         try:
             loader.load_path(path, bundled=True)
-        except ProfileValidationError as error:
-            failures.append(f"{path}: {error}")
+        except ProfileValidationError:
+            failures.append(
+                f"{path}: profile validation failed; run obd-mcp check-config locally for details"
+            )
     return failures
 
 

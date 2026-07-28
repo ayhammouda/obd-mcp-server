@@ -80,6 +80,7 @@ include = [
   "/NOTICE",
   "/README.md",
   "/SECURITY.md",
+  "/SUPPORT.md",
   "/THIRD_PARTY_NOTICES.md",
   "/build-constraints.in",
   "/build-constraints.txt",

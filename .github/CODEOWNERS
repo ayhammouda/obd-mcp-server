@@ -2,7 +2,11 @@
 
 /src/obd_mcp/policy.py @ayhammouda
 /src/obd_mcp/drivers/ @ayhammouda
+/scripts/check_distribution.py @ayhammouda
+/scripts/check_repository_data.py @ayhammouda
 /docs/legal-and-data-policy.md @ayhammouda
 /docs/safety.md @ayhammouda
-/.github/workflows/ @ayhammouda
-
+/SECURITY.md @ayhammouda
+/pyproject.toml @ayhammouda
+/uv.lock @ayhammouda
+/.github/ @ayhammouda

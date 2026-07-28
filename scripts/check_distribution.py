@@ -64,6 +64,7 @@ _SDIST_ROOT_FILES = {
     "PKG-INFO",
     "README.md",
     "SECURITY.md",
+    "SUPPORT.md",
     *_REQUIRED_PROJECT_LICENSES,
     "build-constraints.in",
     "build-constraints.txt",

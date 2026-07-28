@@ -7,17 +7,12 @@ security fixes.
 
 ## Reporting
 
-The intended channel is GitHub's private **Report a vulnerability** flow for
-`ayhammouda/obd-mcp-server` after the public repository exists and the owner
-has enabled and verified private vulnerability reporting.
-
-At this pre-publication stage, no private security email or verified repository
-reporting channel is published. Configuring and testing that channel is a
-first-release blocker. Until it exists, do not put exploit details, vehicle
-identifiers, captures, credentials, or unsafe commands in a public issue.
-After the repository exists, a reporter may open a minimal public issue asking
-the maintainer to establish private contact, without including sensitive
-details.
+Use GitHub's private
+[Report a vulnerability](https://github.com/ayhammouda/obd-mcp-server/security/advisories/new)
+flow. Do not put exploit details, vehicle identifiers, captures, credentials,
+or unsafe commands in a public issue. If the private reporting flow is
+temporarily unavailable, open only a minimal public issue asking the
+maintainer to restore private contact; include no sensitive details.
 
 Include:
 
