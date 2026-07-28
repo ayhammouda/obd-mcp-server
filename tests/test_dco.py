@@ -100,6 +100,75 @@ def test_dco_rejects_signoff_from_a_different_identity(
     assert "matched to the author" in capsys.readouterr().err
 
 
+def test_dco_accepts_standard_dependabot_signoff_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    base = "a" * 40
+    head = "b" * 40
+    monkeypatch.setattr(
+        check_dco,
+        "_load_commits",
+        lambda _base, _head: [
+            check_dco.Commit(
+                sha=head,
+                author_name="dependabot[bot]",
+                author_email="49699333+dependabot[bot]@users.noreply.github.com",
+                message="Subject\n\nSigned-off-by: dependabot[bot] <support@github.com>",
+            )
+        ],
+    )
+
+    assert check_dco.main(["--allow-dependabot", base, head]) == 0
+    assert capsys.readouterr().out == "DCO check passed\n"
+
+
+def test_dco_rejects_dependabot_signoff_without_explicit_enablement(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    base = "a" * 40
+    head = "b" * 40
+    monkeypatch.setattr(
+        check_dco,
+        "_load_commits",
+        lambda _base, _head: [
+            check_dco.Commit(
+                sha=head,
+                author_name="dependabot[bot]",
+                author_email="49699333+dependabot[bot]@users.noreply.github.com",
+                message="Subject\n\nSigned-off-by: dependabot[bot] <support@github.com>",
+            )
+        ],
+    )
+
+    assert check_dco.main([base, head]) == 1
+    assert "matched to the author" in capsys.readouterr().err
+
+
+def test_dco_still_rejects_unsigned_maintainer_commit_on_dependabot_pr(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    base = "a" * 40
+    head = "b" * 40
+    monkeypatch.setattr(
+        check_dco,
+        "_load_commits",
+        lambda _base, _head: [
+            check_dco.Commit(
+                sha=head,
+                author_name="Example Maintainer",
+                author_email="maintainer@example.org",
+                message="Unsigned maintainer change",
+            )
+        ],
+    )
+
+    assert check_dco.main(["--allow-dependabot", base, head]) == 1
+    assert head[:12] in capsys.readouterr().err
+
+
 def test_dco_loader_includes_merge_commits(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
