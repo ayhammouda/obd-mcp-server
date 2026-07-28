@@ -221,8 +221,11 @@ def main() -> int:
 
     if failures:
         print("Repository data check failed:", file=sys.stderr)
-        for failure in failures:
-            print(f"- {failure}", file=sys.stderr)
+        print(
+            "Finding details are withheld because candidate paths and parser errors may "
+            "contain sensitive data.",
+            file=sys.stderr,
+        )
         return 1
 
     print("Repository paths, text content, and bundled profiles passed.")

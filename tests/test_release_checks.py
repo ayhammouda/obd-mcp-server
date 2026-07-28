@@ -309,6 +309,34 @@ def test_bundled_profile_check_does_not_expose_validation_details(
     assert sensitive_detail not in failures[0]
 
 
+def test_repository_check_main_withholds_failure_details(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    sensitive_detail = "sk-" + ("Y" * 32)
+    monkeypatch.setattr(
+        check_repository_data,
+        "repository_paths",
+        lambda _root: [PurePosixPath("candidate.txt")],
+    )
+    monkeypatch.setattr(
+        check_repository_data,
+        "check_repository_files",
+        lambda _root, _paths: [f"candidate.txt: {sensitive_detail}"],
+    )
+    monkeypatch.setattr(
+        check_repository_data,
+        "check_bundled_profiles",
+        lambda _root: [],
+    )
+
+    assert check_repository_data.main() == 1
+
+    captured = capsys.readouterr()
+    assert sensitive_detail not in captured.err
+    assert "details are withheld" in captured.err
+
+
 def test_distribution_scanner_accepts_allowlisted_wheel(tmp_path: Path) -> None:
     wheel = tmp_path / "obd_mcp_server-0.1.0-py3-none-any.whl"
     _write_wheel(wheel, _safe_wheel_entries())
