@@ -12,8 +12,13 @@ on:
         required: true
         default: false
         type: boolean
-      confirm_project:
-        description: Type obd-mcp-server to enable the publish job
+      create_github_release:
+        description: Publish an immutable GitHub release from the verified artifacts
+        required: true
+        default: false
+        type: boolean
+      confirm_tag:
+        description: Type the exact tag to enable any external publication
         required: false
         type: string
 
@@ -29,21 +34,44 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
+      CONFIRM_TAG: ${{ inputs.confirm_tag }}
+      CREATE_GITHUB_RELEASE: ${{ inputs.create_github_release }}
+      PUBLISH_TO_PYPI: ${{ inputs.publish_to_pypi }}
       RELEASE_TAG: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
-      - name: Verify tag and main ancestry
+      - name: Verify release intent, annotated tag, and current main
         run: |
-          case "${RELEASE_TAG}" in
-            v[0-9]*) ;;
-            *) echo "Tag must start with v and a digit" >&2; exit 1 ;;
-          esac
+          if [[ ! "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Tag must be a v-prefixed semantic version" >&2
+            exit 1
+          fi
+          if [[ "${PUBLISH_TO_PYPI}" == "true" && "${CREATE_GITHUB_RELEASE}" != "true" ]]; then
+            echo "PyPI publication requires a matching GitHub release" >&2
+            exit 1
+          fi
+          if [[ "${PUBLISH_TO_PYPI}" == "true" || "${CREATE_GITHUB_RELEASE}" == "true" ]]; then
+            test "${CONFIRM_TAG}" = "${RELEASE_TAG}"
+          fi
+          test "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" = "tag"
           test "$(git describe --tags --exact-match HEAD)" = "${RELEASE_TAG}"
-          git fetch origin main
-          git merge-base --is-ancestor HEAD origin/main
+          git fetch --no-tags origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          PACKAGE_VERSION="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          test "${RELEASE_TAG}" = "v${PACKAGE_VERSION}"
+      - name: Validate MCP Registry metadata with pinned publisher
+        run: |
+          PUBLISHER_ARCHIVE="${RUNNER_TEMP}/mcp-publisher_linux_amd64.tar.gz"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "${PUBLISHER_ARCHIVE}" \
+            "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.0/mcp-publisher_linux_amd64.tar.gz"
+          echo "1370446bbe74d562608e8005a6ccce02d146a661fbd78674e11cc70b9618d6cf  ${PUBLISHER_ARCHIVE}" \
+            | sha256sum --check --strict
+          tar -xzf "${PUBLISHER_ARCHIVE}" -C "${RUNNER_TEMP}" mcp-publisher
+          "${RUNNER_TEMP}/mcp-publisher" validate server.json
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
@@ -97,7 +125,8 @@ jobs:
   publish:
     if: >-
       inputs.publish_to_pypi == true &&
-      inputs.confirm_project == 'obd-mcp-server'
+      inputs.create_github_release == true &&
+      inputs.confirm_tag == inputs.tag
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -121,6 +150,8 @@ jobs:
   github-release:
     if: >-
       always() &&
+      inputs.create_github_release == true &&
+      inputs.confirm_tag == inputs.tag &&
       needs.verify.result == 'success' &&
       (
         inputs.publish_to_pypi == false ||
@@ -141,10 +172,21 @@ jobs:
           path: dist
       - name: Create checksums
         run: sha256sum dist/* > SHA256SUMS
-      - name: Create GitHub release from verified artifacts
-        run: >-
-          gh release create "${RELEASE_TAG}" dist/* SHA256SUMS
-          --repo "${GITHUB_REPOSITORY}"
-          --verify-tag
-          --generate-notes
-          --title "${RELEASE_TAG}"
+      - name: Publish immutable GitHub release from verified artifacts
+        run: |
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${RELEASE_TAG} already exists" >&2
+            exit 1
+          fi
+          gh release create "${RELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --generate-notes \
+            --title "${RELEASE_TAG}" \
+            --draft
+          gh release upload "${RELEASE_TAG}" dist/* SHA256SUMS \
+            --repo "${GITHUB_REPOSITORY}"
+          gh release edit "${RELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --draft=false \
+            --latest

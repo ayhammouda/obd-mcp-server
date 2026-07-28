@@ -1,7 +1,10 @@
+<!-- mcp-name: io.github.ayhammouda/obd-mcp-server -->
+
 # OBD MCP Server
 
 [![CI](https://github.com/ayhammouda/obd-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/ayhammouda/obd-mcp-server/actions/workflows/ci.yml)
 [![Security](https://github.com/ayhammouda/obd-mcp-server/actions/workflows/security.yml/badge.svg)](https://github.com/ayhammouda/obd-mcp-server/actions/workflows/security.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ayhammouda/obd-mcp-server/badge)](https://scorecard.dev/viewer/?uri=github.com/ayhammouda/obd-mcp-server)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://github.com/ayhammouda/obd-mcp-server/blob/main/pyproject.toml)
 [![License: Apache-2.0 OR MIT](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://github.com/ayhammouda/obd-mcp-server#license)
 
@@ -133,6 +136,34 @@ args = [
 The explicit `stdio` subcommand is recommended in client configuration even
 though it is also the CLI default.
 
+## Claude Code project configuration
+
+The repository includes a project-scoped `.mcp.json` that launches the safe
+simulator configuration from the current checkout:
+
+```json
+{
+  "mcpServers": {
+    "obd": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "${CLAUDE_PROJECT_DIR:-.}",
+        "run",
+        "obd-mcp",
+        "stdio",
+        "--config",
+        "${CLAUDE_PROJECT_DIR:-.}/examples/obd-mcp.toml"
+      ]
+    }
+  }
+}
+```
+
+Project-scoped MCP configuration requires client approval before it runs.
+Nothing in this file enables third-party drivers or live hardware.
+
 ## Live ELM327 adapter
 
 The simulator is the default. To install the optional, MIT-licensed adapter
@@ -251,6 +282,8 @@ trusted publisher, release environment, tag, artifact, and fresh-install smoke
 test must all be verified before the first release. The ELM327 integration has
 not been validated against real hardware. See
 [the release runbook](https://github.com/ayhammouda/obd-mcp-server/blob/main/docs/publishing.md).
+`server.json` therefore carries source identity and version metadata only; it
+deliberately advertises no package or remote installation.
 
 ## Get involved
 

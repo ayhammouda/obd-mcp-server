@@ -16,9 +16,13 @@ each gate for the first and every subsequent release.
       `CODE_OF_CONDUCT.md`.
 - [x] Configure repository metadata, community templates, merge policy, and a
       custom social-preview asset.
+- [x] Protect `v*` tags against movement and deletion.
+- [x] Enable immutable releases for future GitHub Releases.
+- [x] Add source-only `server.json` and `.mcp.json`; keep package and remote
+      descriptors absent until a real distribution is verified.
 - [ ] Configure a PyPI trusted publisher for the exact repository/workflow.
-- [ ] Decide whether MCP Registry publication is desired; validate its current
-      metadata schema from official docs at that time.
+- [ ] Decide whether MCP Registry publication is desired after the first real
+      distribution is verified.
 - [ ] Configure release environments with maintainer approval.
 
 Until these are complete, documentation uses checkout/source installation and
@@ -103,13 +107,21 @@ over compiled stdio and confirms the seven expected tools.
 
 ## Tag and publish
 
-- Tag only the reviewed commit.
+- Create an annotated `vMAJOR.MINOR.PATCH` tag only on the reviewed current
+  `main` commit. The release workflow rejects lightweight tags, historical
+  commits, version mismatches, and malformed version tags.
+- Dispatch the release workflow with both publication toggles off to verify
+  the exact tag without publishing anything.
+- For a real release, enable `create_github_release`, optionally enable
+  `publish_to_pypi`, and type the exact tag into `confirm_tag`. PyPI
+  publication cannot run without the matching GitHub release.
 - Use PyPI OIDC trusted publishing with provenance; do not store a long-lived
   API token.
 - Publish the already tested artifact rather than rebuilding in the publish
   job.
 - Verify the PyPI page, hashes, metadata, license, README, and fresh install.
-- Create a GitHub release referencing the same hashes.
+- Create the GitHub release as a draft, attach the verified artifacts and
+  checksums, then publish it so release immutability locks the tag and assets.
 - Publish an MCP Registry entry only after validating the current official
   schema and a real client installation.
 
