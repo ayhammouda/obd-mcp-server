@@ -164,6 +164,70 @@ simulator configuration from the current checkout:
 Project-scoped MCP configuration requires client approval before it runs.
 Nothing in this file enables third-party drivers or live hardware.
 
+## VS Code workspace configuration
+
+Create `.vscode/mcp.json` in the workspace. Replace both checkout placeholders
+with the same absolute path; an absolute source path keeps startup independent
+of the editor's working directory.
+
+```json
+{
+  "servers": {
+    "obd": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/obd-mcp-server",
+        "run",
+        "obd-mcp",
+        "stdio",
+        "--config",
+        "/absolute/path/to/obd-mcp-server/examples/obd-mcp.toml"
+      ]
+    }
+  }
+}
+```
+
+Start the server from VS Code's MCP controls and approve the workspace server
+when prompted. See the official
+[VS Code MCP server guide](https://code.visualstudio.com/docs/agent-customization/mcp-servers)
+for configuration locations, trust, and logs.
+
+## Claude Desktop configuration
+
+Open Claude Desktop's Developer settings and edit
+`claude_desktop_config.json`. Use the source checkout's absolute path rather
+than relying on a launch-time working directory:
+
+```json
+{
+  "mcpServers": {
+    "obd": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/obd-mcp-server",
+        "run",
+        "obd-mcp",
+        "stdio",
+        "--config",
+        "/absolute/path/to/obd-mcp-server/examples/obd-mcp.toml"
+      ]
+    }
+  }
+}
+```
+
+Fully restart Claude Desktop after saving the file. The official
+[local MCP server guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers)
+documents the platform-specific config location and restart flow.
+
+Both examples use stdio and the repository's deterministic simulator config.
+They do not enable third-party drivers, connect to a vehicle, or expose an HTTP
+listener. Ensure `uv` is available on the client application's `PATH`.
+
 ## Live ELM327 adapter
 
 The simulator is the default. To install the optional, MIT-licensed adapter
