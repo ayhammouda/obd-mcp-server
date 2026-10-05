@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sys
-from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -52,7 +51,7 @@ driver = "simulator"
             ClientSession(
                 read_stream,
                 write_stream,
-                read_timeout_seconds=timedelta(seconds=10),
+                read_timeout_seconds=10.0,
             ) as session,
         ):
             await session.initialize()
@@ -60,17 +59,17 @@ driver = "simulator"
             assert {tool.name for tool in tools.tools} == EXPECTED_TOOLS
 
             vehicles = await session.call_tool("obd_list_vehicles")
-            assert vehicles.isError is False
-            assert vehicles.structuredContent is not None
-            assert vehicles.structuredContent["vehicles"][0]["vehicle_id"] == "e2e-demo"
+            assert vehicles.is_error is False
+            assert vehicles.structured_content is not None
+            assert vehicles.structured_content["vehicles"][0]["vehicle_id"] == "e2e-demo"
 
             readings = await session.call_tool(
                 "obd_read_standard_pids",
                 {"vehicle_id": "e2e-demo", "pids": ["010C", "0142"]},
             )
-            assert readings.isError is False
-            assert readings.structuredContent is not None
-            assert len(readings.structuredContent["readings"]) == 2
+            assert readings.is_error is False
+            assert readings.structured_content is not None
+            assert len(readings.structured_content["readings"]) == 2
 
             opened = await session.call_tool(
                 "obd_open_issue",
@@ -80,17 +79,17 @@ driver = "simulator"
                     "dtc_codes": ["P0300"],
                 },
             )
-            assert opened.isError is False
-            assert opened.structuredContent is not None
-            issue_id = opened.structuredContent["issue_id"]
+            assert opened.is_error is False
+            assert opened.structured_content is not None
+            issue_id = opened.structured_content["issue_id"]
 
             timeline = await session.call_tool(
                 "obd_get_issue_timeline",
                 {"issue_id": issue_id},
             )
-            assert timeline.isError is False
-            assert timeline.structuredContent is not None
-            assert timeline.structuredContent["issue"]["issue_id"] == issue_id
+            assert timeline.is_error is False
+            assert timeline.structured_content is not None
+            assert timeline.structured_content["issue"]["issue_id"] == issue_id
 
         diagnostics.seek(0)
         assert "Traceback" not in diagnostics.read()
