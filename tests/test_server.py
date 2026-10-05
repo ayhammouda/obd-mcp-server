@@ -6,9 +6,9 @@ from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 from types import SimpleNamespace
 
-import httpx
+import httpx2 as httpx
 import pytest
-from mcp.server.fastmcp.exceptions import ResourceError, ToolError
+from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 
 import obd_mcp.server as server_module
 from obd_mcp.config import (
@@ -175,24 +175,26 @@ async def test_server_exposes_only_the_seven_typed_tools() -> None:
     tools = {tool.name: tool for tool in await server.list_tools()}
 
     assert set(tools) == EXPECTED_TOOLS
-    assert all(tool.outputSchema["type"] == "object" for tool in tools.values())
-    pid_array_schema = tools["obd_read_standard_pids"].inputSchema["properties"]["pids"]["anyOf"][0]
-    issue_properties = tools["obd_open_issue"].inputSchema["properties"]
+    assert all(tool.output_schema["type"] == "object" for tool in tools.values())
+    pid_array_schema = tools["obd_read_standard_pids"].input_schema["properties"]["pids"]["anyOf"][
+        0
+    ]
+    issue_properties = tools["obd_open_issue"].input_schema["properties"]
     assert pid_array_schema["maxItems"] == 9
     assert issue_properties["title"]["maxLength"] == 256
     assert issue_properties["description"]["anyOf"][0]["maxLength"] == 8_192
     assert issue_properties["dtc_codes"]["anyOf"][0]["maxItems"] == 64
-    assert "profile_id" not in tools["obd_read_ecu_snapshot"].inputSchema["properties"]
+    assert "profile_id" not in tools["obd_read_ecu_snapshot"].input_schema["properties"]
     for name, tool in tools.items():
         assert tool.annotations is not None
-        assert tool.annotations.destructiveHint is False
-        assert tool.annotations.openWorldHint is False
+        assert tool.annotations.destructive_hint is False
+        assert tool.annotations.open_world_hint is False
         if name == "obd_open_issue":
-            assert tool.annotations.readOnlyHint is False
-            assert tool.annotations.idempotentHint is False
+            assert tool.annotations.read_only_hint is False
+            assert tool.annotations.idempotent_hint is False
         else:
-            assert tool.annotations.readOnlyHint is True
-            assert tool.annotations.idempotentHint is True
+            assert tool.annotations.read_only_hint is True
+            assert tool.annotations.idempotent_hint is True
 
 
 def test_server_explicitly_enables_dns_rebinding_protection_for_loopback_aliases() -> None:
@@ -201,7 +203,8 @@ def test_server_explicitly_enables_dns_rebinding_protection_for_loopback_aliases
         service=FakeService(),
     )
 
-    security = server.settings.transport_security
+    server.streamable_http_app()
+    security = server._lowlevel_server.session_manager.security_settings
     assert security is not None
     assert security.enable_dns_rebinding_protection is True
     assert "127.0.0.2:*" in security.allowed_hosts
@@ -676,7 +679,7 @@ async def test_configured_fleet_routes_each_vehicle_through_its_driver() -> None
     )
     server = create_server(config)
 
-    async with server._mcp_server.lifespan(server._mcp_server):
+    async with server.runtime_lifespan():
         await server.call_tool("obd_list_vehicles", {})
         await server.call_tool(
             "obd_get_vehicle_status",
@@ -699,3 +702,12 @@ async def test_configured_fleet_routes_each_vehicle_through_its_driver() -> None
                 "obd_get_vehicle_status",
                 {"vehicle_id": "missing"},
             )
+
+
+@pytest.mark.asyncio
+async def test_transport_overrides_cannot_replace_validated_configuration() -> None:
+    server = create_server(AppConfig(), service=FakeService())
+    with pytest.raises(ValueError, match="transport overrides"):
+        server.streamable_http_app(host="192.0.2.1")
+    with pytest.raises(ValueError, match="transport overrides"):
+        await server.run_streamable_http_async(host="192.0.2.1")

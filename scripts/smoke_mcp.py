@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import tempfile
-from datetime import timedelta
 from pathlib import Path
 
 from mcp import ClientSession, StdioServerParameters
@@ -54,7 +53,7 @@ driver = "simulator"
             ClientSession(
                 read_stream,
                 write_stream,
-                read_timeout_seconds=timedelta(seconds=15),
+                read_timeout_seconds=15.0,
             ) as session,
         ):
             await session.initialize()
@@ -63,9 +62,9 @@ driver = "simulator"
             if names != EXPECTED_TOOLS:
                 raise RuntimeError(f"unexpected tool set: {sorted(names)}")
             vehicles = await session.call_tool("obd_list_vehicles")
-            if vehicles.isError or vehicles.structuredContent is None:
+            if vehicles.is_error or vehicles.structured_content is None:
                 raise RuntimeError("installed MCP vehicle discovery failed")
-            vehicle_id = vehicles.structuredContent["vehicles"][0]["vehicle_id"]
+            vehicle_id = vehicles.structured_content["vehicles"][0]["vehicle_id"]
             if vehicle_id != "artifact-demo":
                 raise RuntimeError(f"unexpected vehicle id: {vehicle_id}")
 

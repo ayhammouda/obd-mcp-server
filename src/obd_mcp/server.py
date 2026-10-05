@@ -1,4 +1,4 @@
-"""Thin FastMCP facade over the read-only diagnostic service."""
+"""Thin MCPServer facade over the read-only diagnostic service."""
 
 from __future__ import annotations
 
@@ -11,11 +11,11 @@ from dataclasses import dataclass
 from typing import Annotated, Any, Literal, Protocol, TypeVar
 from urllib.parse import unquote
 
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.exceptions import ResourceError, ToolError
 from mcp.server.lowlevel.helper_types import ReadResourceContents
+from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from mcp.server.transport_security import TransportSecuritySettings
-from mcp.types import ContentBlock, GetPromptResult, ToolAnnotations
+from mcp.types import CallToolResult, GetPromptResult, InputRequiredResult, ToolAnnotations
 from pydantic import AnyUrl, Field, StringConstraints, ValidationError
 from starlette.applications import Starlette
 from starlette.responses import PlainTextResponse
@@ -23,6 +23,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .config import (
     AppConfig,
+    ServerConfig,
     VehicleConfig,
     load_config,
     revalidate_app_config,
@@ -64,16 +65,16 @@ This server is an observation-only diagnostic gateway.
 """
 
 _READ_ONLY = ToolAnnotations(
-    readOnlyHint=True,
-    destructiveHint=False,
-    idempotentHint=True,
-    openWorldHint=False,
+    read_only_hint=True,
+    destructive_hint=False,
+    idempotent_hint=True,
+    open_world_hint=False,
 )
 _LOCAL_ISSUE_WRITE = ToolAnnotations(
-    readOnlyHint=False,
-    destructiveHint=False,
-    idempotentHint=False,
-    openWorldHint=False,
+    read_only_hint=False,
+    destructive_hint=False,
+    idempotent_hint=False,
+    open_world_hint=False,
 )
 _MAX_HTTP_BODY_BYTES = 1_048_576
 _HTTP_SESSION_IDLE_TIMEOUT_SECONDS = 300.0
@@ -166,22 +167,17 @@ def create_server(
     config: AppConfig | None = None,
     *,
     service: DiagnosticServiceProtocol | None = None,
-) -> FastMCP[Any]:
+) -> MCPServer[Any]:
     """Create the MCP server, optionally with an injected service for tests."""
 
     active_config = revalidate_app_config(config or load_config())
     runtime = _Runtime(service=service) if service is not None else _build_runtime(active_config)
-    mcp = _BoundedFastMCP(
+    mcp = _BoundedMCPServer(
         name="obd-mcp",
         instructions=_SAFETY_GUIDANCE,
         log_level=active_config.server.log_level,
-        host=active_config.server.host,
-        port=active_config.server.port,
-        streamable_http_path=active_config.server.http_path,
-        json_response=True,
-        stateless_http=False,
-        transport_security=_transport_security(active_config.server.host),
     )
+    mcp.server_config = active_config.server
     mcp.bind_runtime(runtime)
     _configure_safe_logging()
 
@@ -376,7 +372,9 @@ class _RequestBodyLimitMiddleware:
         await self._app(scope, replay, send)
 
 
-class _BoundedFastMCP(FastMCP[Any]):
+class _BoundedMCPServer(MCPServer[Any]):
+    server_config: ServerConfig
+
     def bind_runtime(self, runtime: _Runtime) -> None:
         self._runtime = runtime
         self._runtime_lock = asyncio.Lock()
@@ -413,24 +411,37 @@ class _BoundedFastMCP(FastMCP[Any]):
         async with self.runtime_lifespan():
             await super().run_stdio_async()
 
-    async def run_streamable_http_async(self) -> None:
+    async def run_streamable_http_async(self, **kwargs: Any) -> None:
         """Run HTTP without request-target access logs that can expose identifiers."""
 
+        if kwargs:
+            raise ValueError("transport overrides are not supported")
         import uvicorn
 
         config = uvicorn.Config(
             self.streamable_http_app(),
-            host=self.settings.host,
-            port=self.settings.port,
+            host=self.server_config.host,
+            port=self.server_config.port,
             log_level=self.settings.log_level.lower(),
             access_log=False,
             log_config=None,
         )
         await uvicorn.Server(config).serve()
 
-    def streamable_http_app(self) -> Starlette:
-        app = super().streamable_http_app()
-        self.session_manager.session_idle_timeout = _HTTP_SESSION_IDLE_TIMEOUT_SECONDS
+    def streamable_http_app(self, **kwargs: Any) -> Starlette:
+        if kwargs:
+            raise ValueError("transport overrides are not supported")
+        app = super().streamable_http_app(
+            streamable_http_path=self.server_config.http_path,
+            json_response=True,
+            stateless_http=False,
+            transport_security=_transport_security(self.server_config.host),
+            host=self.server_config.host,
+            max_request_body_size=_MAX_HTTP_BODY_BYTES,
+        )
+        self._lowlevel_server.session_manager.session_idle_timeout = (
+            _HTTP_SESSION_IDLE_TIMEOUT_SECONDS
+        )
         sdk_lifespan = app.router.lifespan_context
 
         @asynccontextmanager
@@ -454,9 +465,10 @@ class _BoundedFastMCP(FastMCP[Any]):
         self,
         name: str,
         arguments: dict[str, Any],
-    ) -> Sequence[ContentBlock] | dict[str, Any]:
+        context: Context[Any, Any] | None = None,
+    ) -> CallToolResult | InputRequiredResult:
         try:
-            result = await super().call_tool(name, arguments)
+            result = await super().call_tool(name, arguments, context)
         except ToolError as exc:
             message = str(exc)
             if (
@@ -478,7 +490,8 @@ class _BoundedFastMCP(FastMCP[Any]):
         self,
         name: str,
         arguments: dict[str, Any] | None = None,
-    ) -> GetPromptResult:
+        context: Context[Any, Any] | None = None,
+    ) -> GetPromptResult | InputRequiredResult:
         try:
             if len(name) > 128:
                 raise ValueError("prompt name is too long")
@@ -487,7 +500,7 @@ class _BoundedFastMCP(FastMCP[Any]):
         except ValueError:
             raise ValueError("sensitive prompt input withheld") from None
         try:
-            return await super().get_prompt(name, arguments)
+            return await super().get_prompt(name, arguments, context)
         except Exception as exc:
             if contains_raw_vin(str(exc)) or len(str(exc)) > _MAX_ERROR_MESSAGE_CHARS:
                 raise ValueError("prompt request failed safely") from None
@@ -496,7 +509,8 @@ class _BoundedFastMCP(FastMCP[Any]):
     async def read_resource(
         self,
         uri: AnyUrl | str,
-    ) -> Iterable[ReadResourceContents]:
+        context: Context[Any, Any] | None = None,
+    ) -> Iterable[ReadResourceContents] | InputRequiredResult:
         rendered_uri = str(uri)
         try:
             if len(rendered_uri) > 512:
@@ -512,7 +526,7 @@ class _BoundedFastMCP(FastMCP[Any]):
         except ValueError:
             raise ResourceError("sensitive resource input withheld") from None
         try:
-            return await super().read_resource(uri)
+            return await super().read_resource(uri, context)
         except ResourceError:
             # SDK messages include the caller-provided URI. Keep the public
             # failure constant so encoded or otherwise transformed identifiers
